@@ -307,7 +307,7 @@ namespace DepotDumper
                 Console.WriteLine("Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result);
 
 
-                if (depotKey.Result == EResult.Timeout)
+                if (depotKey.Result == EResult.Timeout || depotKey.Result == EResult.AccessDenied)
                 {
                     completed = true;
                     return;

@@ -73,7 +73,7 @@ namespace DepotDumper
                 SteamApps.PICSProductInfoCallback.PICSProductInfo package;
                 if (steam3.PackageInfo.TryGetValue(license, out package) && package != null)
                 {
-                    var availableDepots = package.KeyValues["depotids"].Children.Select(x => x.AsUnsignedInteger()).ToList();
+                    //var availableDepots = package.KeyValues["depotids"].Children.Select(x => x.AsUnsignedInteger()).ToList();
 
                     foreach (uint appId in package.KeyValues["appids"].Children.Select(x => x.AsUnsignedInteger()))
                     {
@@ -113,33 +113,22 @@ namespace DepotDumper
                             if (!uint.TryParse(depotSection.Name, out id) || id == uint.MaxValue)
                                 continue;
 
-                            if (availableDepots.Contains(id))
+                            if (depotSection["manifests"] == KeyValue.Invalid)
+                                continue;
+
+                            // Can't check the package which the app is in since user's depots may be scattered across different packages.
+                            steam3.RequestDepotKey(id, appId);
+                            if (!steam3.DepotKeys.ContainsKey(id))
                             {
-                                steam3.RequestDepotKey(id, appId);
-                                if(!steam3.DepotKeys.ContainsKey(id))
-                                {
-                                    Console.WriteLine("Trying second time...");
-                                    steam3.RequestDepotKey(id, appId);
-                                    if (!steam3.DepotKeys.ContainsKey(id))
-                                    {
-                                        Console.WriteLine("Trying third time...");
-                                        steam3.RequestDepotKey(id, appId);
-                                    }
-                                }
+                                Console.WriteLine("Failed to get a key for depot {0} of app {1}", id, appId);
                             }
                         }
-
                     }
-
-
                 }
             }
 
             sw.Close();
             sw2.Close();
-
-        }
-        
+        }      
     }
-
 }
