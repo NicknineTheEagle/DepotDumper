@@ -10,16 +10,6 @@ namespace DepotDumper
 {
     static class Util
     {
-
-        public static string MakePathSafe(string file)
-        {
-            Array.ForEach(Path.GetInvalidFileNameChars(), c => file = file.Replace(c.ToString(), String.Empty));
-            file = file.Replace("/", "");
-            file = file.Replace("\\", "");
-            return file;
-        }
-
-
         public static string GetSteamOS()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -36,6 +26,11 @@ namespace DepotDumper
             }
 
             return "unknown";
+        }
+
+        public static string GetSteamArch()
+        {
+            return Environment.Is64BitOperatingSystem ? "64" : "32";
         }
 
         public static string ReadPassword()
@@ -63,8 +58,6 @@ namespace DepotDumper
             return password.ToString();
         }
 
-        // Validate a file against Steam3 Chunk data
-        
         public static byte[] AdlerHash(byte[] input)
         {
             uint a = 0, b = 0;

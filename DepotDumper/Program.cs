@@ -35,9 +35,9 @@ namespace DepotDumper
                 Console.WriteLine();
             }
 
-            sw = new StreamWriter( $"{user}_steam.keys" );
+            sw = new StreamWriter( string.Format( "{0}_steam.keys", user ) );
             sw.AutoFlush = true;
-            sw2 = new StreamWriter( $"{user}_steam.appids" );
+            sw2 = new StreamWriter( string.Format( "{0}_steam.appids", user ) );
             sw2.AutoFlush = true;
 
             Config.SuppliedPassword = password;
@@ -87,10 +87,10 @@ namespace DepotDumper
 
                         KeyValue appinfo = app.KeyValues;
                         KeyValue depots = appinfo.Children.Where( c => c.Name == "depots" ).FirstOrDefault();
-
                         KeyValue common = appinfo.Children.Where( c => c.Name == "common" ).FirstOrDefault();
 
-                        if ( depots == null ) continue;
+                        if ( depots == null )
+                            continue;
 
                         string appName = "** UNKNOWN **";
                         if ( common != null )
@@ -104,7 +104,7 @@ namespace DepotDumper
 
                         Console.WriteLine( "Got AppInfo for {0}: {1}", appId, appName );
 
-                        sw2.WriteLine( $"{appId};{appName}" );
+                        sw2.WriteLine( "{0};{1}", appId, appName );
 
                         foreach ( var depotSection in depots.Children )
                         {
@@ -118,7 +118,11 @@ namespace DepotDumper
 
                             // Can't check the package which the app is in since user's depots may be scattered across different packages.
                             steam3.RequestDepotKey( id, appId );
-                            if ( !steam3.DepotKeys.ContainsKey( id ) )
+                            if ( steam3.DepotKeys.ContainsKey( id ) )
+                            {
+                                sw.WriteLine( "{0};{1}", id, string.Concat( steam3.DepotKeys[id].Select( b => b.ToString( "X2" ) ).ToArray() ) );
+                            }
+                            else
                             {
                                 Console.WriteLine( "Failed to get a key for depot {0} of app {1}", id, appId );
                             }
