@@ -324,16 +324,13 @@ namespace DepotDumper
                 completed = true;
                 Console.WriteLine( "Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result );
 
-                if ( depotKey.Result != EResult.OK && depotKey.Result != EResult.AccessDenied )
+                if ( depotKey.Result != EResult.OK )
                 {
                     Abort();
                     return;
                 }
 
-                if ( depotKey.Result == EResult.OK )
-                {
-                    DepotKeys[depotKey.DepotID] = depotKey.DepotKey;
-                }
+                DepotKeys[ depotKey.DepotID ] = depotKey.DepotKey;
             };
 
             WaitUntilCallback( () =>
@@ -692,6 +689,68 @@ namespace DepotDumper
             bDidReceiveLoginKey = true;
         }
 
+        public void RequestAppInfoList( IEnumerable<uint> apps )
+        {
+            if ( bAborted )
+                return;
 
+            bool completed = false;
+            Action<SteamApps.PICSTokensCallback> cbMethodTokens = ( appTokens ) =>
+            {
+                completed = true;
+                foreach ( var appId in appTokens.AppTokensDenied )
+                {
+                    Console.WriteLine( "Insufficient privileges to get access token for app {0}", appId );
+                }
+
+                foreach ( var token_dict in appTokens.AppTokens )
+                {
+                    this.AppTokens.Add( token_dict.Key, token_dict.Value );
+                }
+            };
+
+            WaitUntilCallback( () =>
+            {
+                callbacks.Subscribe( steamApps.PICSGetAccessTokens( apps, new List<uint>() { } ), cbMethodTokens );
+            }, () => { return completed; } );
+
+            completed = false;
+            Action<SteamApps.PICSProductInfoCallback> cbMethod = ( appInfo ) =>
+            {
+                completed = !appInfo.ResponsePending;
+
+                foreach ( var app_value in appInfo.Apps )
+                {
+                    var app = app_value.Value;
+
+                    Console.WriteLine( "Got AppInfo for {0}", app.ID );
+                    AppInfo.Add( app.ID, app );
+                }
+
+                foreach ( var app in appInfo.UnknownApps )
+                {
+                    AppInfo.Add( app, null );
+                }
+            };
+
+            var requests = new List<SteamApps.PICSRequest>();
+
+            foreach ( var appId in apps )
+            {
+                SteamApps.PICSRequest request = new SteamApps.PICSRequest( appId );
+                if ( AppTokens.ContainsKey( appId ) )
+                {
+                    request.AccessToken = AppTokens[appId];
+                    request.Public = false;
+                }
+
+                requests.Add( request );
+            }
+
+            WaitUntilCallback( () =>
+            {
+                callbacks.Subscribe( steamApps.PICSGetProductInfo( requests, new List<SteamApps.PICSRequest>() { } ), cbMethod );
+            }, () => { return completed; } );
+        }
     }
 }
