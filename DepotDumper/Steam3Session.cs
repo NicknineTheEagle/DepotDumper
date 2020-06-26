@@ -324,6 +324,9 @@ namespace DepotDumper
                 completed = true;
                 Console.WriteLine( "Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result );
 
+                if ( depotKey.Result == EResult.AccessDenied )
+                    return;
+
                 if ( depotKey.Result != EResult.OK )
                 {
                     Abort();
