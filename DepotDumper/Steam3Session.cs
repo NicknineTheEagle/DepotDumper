@@ -324,7 +324,8 @@ namespace DepotDumper
                 completed = true;
                 Console.WriteLine( "Got depot key for {0} result: {1}", depotKey.DepotID, depotKey.Result );
 
-                if ( depotKey.Result == EResult.AccessDenied )
+                // Covers some edge cases like free weekends and expired betas. Need to handle this properly eventually.
+                if ( depotKey.Result == EResult.AccessDenied || depotKey.Result == EResult.Blocked )
                     return;
 
                 if ( depotKey.Result != EResult.OK )
