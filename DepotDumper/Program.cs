@@ -92,7 +92,7 @@ namespace DepotDumper
 
             var depots = new List<uint>();
 
-            // Go through all apps and get keys for each of of their depots
+            // Go through all apps and get keys for each of of their depots.
             foreach ( var appId in apps )
             {
                 SteamApps.PICSProductInfoCallback.PICSProductInfo app;
@@ -133,9 +133,12 @@ namespace DepotDumper
                         SteamApps.PICSProductInfoCallback.PICSProductInfo package;
                         if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                         {
-                            if ( package.KeyValues["depotids"].Children.Any( child => child.AsUnsignedInteger() == id ) )
+                            // Check app list since owning app with the same ID counts as owning the depot.
+                            if ( package.KeyValues["depotids"].Children.Any( child => child.AsUnsignedInteger() == id ) ||
+                                package.KeyValues["appids"].Children.Any( child => child.AsUnsignedInteger() == id ) )
                             {
                                 isOwned = true;
+                                break;
                             }
                         }
                     }
