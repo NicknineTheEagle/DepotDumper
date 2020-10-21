@@ -20,24 +20,26 @@ namespace DepotDumper
             string user = Console.ReadLine();
             string password;
 
-            Console.Write( "Password: " );
-            if ( Console.IsInputRedirected )
+            if ( !string.IsNullOrWhiteSpace( user ) )
             {
-                password = Console.ReadLine();
+                Console.Write( "Password: " );
+                if ( Console.IsInputRedirected )
+                {
+                    password = Console.ReadLine();
+                }
+                else
+                {
+                    // Avoid console echoing of password
+                    password = Util.ReadPassword();
+                    Console.WriteLine();
+                }
             }
             else
             {
-                // Avoid console echoing of password
-                password = Util.ReadPassword();
-                Console.WriteLine();
+                // Login anonymously.
+                user = null;
+                password = null;
             }
-
-            StreamWriter sw = new StreamWriter( string.Format( "{0}_steam.keys", user ) );
-            sw.AutoFlush = true;
-            StreamWriter sw2 = new StreamWriter( string.Format( "{0}_steam.apps", user ) );
-            sw2.AutoFlush = true;
-            StreamWriter sw3 = new StreamWriter( string.Format( "{0}_steam.pkgs", user ) );
-            sw3.AutoFlush = true;
 
             Config.SuppliedPassword = password;
             AccountSettingsStore.LoadFromFile( "xxx" );
@@ -60,9 +62,26 @@ namespace DepotDumper
                 return 1;
             }
 
-            Console.WriteLine( "Getting licenses..." );
-            steam3.WaitUntilCallback( () => { }, () => { return steam3.Licenses != null; } );
-            IEnumerable<uint> licenseQuery = steam3.Licenses.Select( x => x.PackageID ).Distinct();
+            string filenameUser = ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) ? user : "anon";
+
+            StreamWriter sw = new StreamWriter( string.Format( "{0}_steam.keys", filenameUser ) );
+            sw.AutoFlush = true;
+            StreamWriter sw2 = new StreamWriter( string.Format( "{0}_steam.apps", filenameUser ) );
+            sw2.AutoFlush = true;
+            StreamWriter sw3 = new StreamWriter( string.Format( "{0}_steam.pkgs", filenameUser ) );
+            sw3.AutoFlush = true;
+
+            IEnumerable<uint> licenseQuery;
+            if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
+            {
+                licenseQuery = new List<uint>() { 17906 };
+            }
+            else
+            {
+                Console.WriteLine( "Getting licenses..." );
+                steam3.WaitUntilCallback( () => { }, () => { return steam3.Licenses != null; } );
+                licenseQuery = steam3.Licenses.Select( x => x.PackageID ).Distinct();
+            }
 
             steam3.RequestPackageInfo( licenseQuery );
 
