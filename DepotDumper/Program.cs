@@ -77,13 +77,8 @@ namespace DepotDumper
                     var token = steam3.PackageTokens.ContainsKey( license ) ? steam3.PackageTokens[license] : 0;
                     sw3.WriteLine( "{0};{1}", license, token );
 
-                    foreach ( uint appId in package.KeyValues["appids"].Children.Select( x => x.AsUnsignedInteger() ) )
-                    {
-                        if ( apps.Contains( appId ) )
-                            continue;
-
-                        apps.Add( appId );
-                    }
+                    List<KeyValue> packageApps = package.KeyValues["appids"].Children;
+                    apps.AddRange( packageApps.Select( x => x.AsUnsignedInteger() ).Where( x => !apps.Contains( x ) ) );
                 }
             }
 
@@ -92,17 +87,15 @@ namespace DepotDumper
 
             var depots = new List<uint>();
 
-            // Go through all apps and get keys for each of of their depots.
+            // Go through all apps and get keys for each of their depots.
             foreach ( var appId in apps )
             {
                 SteamApps.PICSProductInfoCallback.PICSProductInfo app;
                 if ( !steam3.AppInfo.TryGetValue( appId, out app ) || app == null )
-                {
                     continue;
-                }
 
                 KeyValue appinfo = app.KeyValues;
-                KeyValue depotInfo = appinfo.Children.Where( c => c.Name == "depots" ).FirstOrDefault();
+                KeyValue depotInfo = appinfo["depots"];
 
                 if ( !steam3.AppTokens.ContainsKey( appId ) )
                     continue;
@@ -133,7 +126,7 @@ namespace DepotDumper
                         SteamApps.PICSProductInfoCallback.PICSProductInfo package;
                         if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                         {
-                            // Check app list since owning app with the same ID counts as owning the depot.
+                            // Check app list, too, since owning an app with the same ID counts as owning the depot.
                             if ( package.KeyValues["depotids"].Children.Any( child => child.AsUnsignedInteger() == id ) ||
                                 package.KeyValues["appids"].Children.Any( child => child.AsUnsignedInteger() == id ) )
                             {
@@ -147,9 +140,11 @@ namespace DepotDumper
                         continue;
 
                     steam3.RequestDepotKey( id, appId );
-                    if ( steam3.DepotKeys.ContainsKey( id ) )
+
+                    byte[] depotKey;
+                    if ( steam3.DepotKeys.TryGetValue( id, out depotKey ) )
                     {
-                        sw.WriteLine( "{0};{1}", id, string.Concat( steam3.DepotKeys[id].Select( b => b.ToString( "X2" ) ).ToArray() ) );
+                        sw.WriteLine( "{0};{1}", id, string.Concat( depotKey.Select( b => b.ToString( "X2" ) ).ToArray() ) );
                         depots.Add( id );
                     }
                 }
