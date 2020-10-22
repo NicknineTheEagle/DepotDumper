@@ -1,12 +1,10 @@
 ﻿using System;
 using System.IO;
-using System.Security.Cryptography;
-using System.Threading;
 using System.Linq;
+using System.ComponentModel;
+using System.Collections.Generic;
 
 using SteamKit2;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace DepotDumper
 {
@@ -43,6 +41,8 @@ namespace DepotDumper
 
             Config.SuppliedPassword = password;
             AccountSettingsStore.LoadFromFile( "xxx" );
+
+            bool skipUnreleased = HasParameter( args, "-skip-unreleased" );
 
             steam3 = new Steam3Session(
                new SteamUser.LogOnDetails()
@@ -119,9 +119,23 @@ namespace DepotDumper
                 if ( !steam3.AppTokens.ContainsKey( appId ) )
                     continue;
 
+                if ( skipUnreleased )
+                {
+                    if ( appinfo["common"]["ReleaseState"] != KeyValue.Invalid )
+                    {
+                        if ( appinfo["common"]["ReleaseState"].AsString() != "released" )
+                            continue;
+                    }
+                    else
+                    {
+                        if ( appinfo["extended"]["state"].AsString() == "eStateUnavailable" )
+                            continue;
+                    }
+                }
+
                 sw2.WriteLine( "{0};{1}", appId, steam3.AppTokens[appId] );
 
-                if ( depotInfo == null )
+                if ( depotInfo == KeyValue.Invalid )
                     continue;
 
                 foreach ( var depotSection in depotInfo.Children )
@@ -177,6 +191,39 @@ namespace DepotDumper
             steam3.Disconnect();
 
             return 0;
+        }
+
+        static int IndexOfParam( string[] args, string param )
+        {
+            for ( int x = 0; x < args.Length; ++x )
+            {
+                if ( args[x].Equals( param, StringComparison.OrdinalIgnoreCase ) )
+                    return x;
+            }
+            return -1;
+        }
+
+        static bool HasParameter( string[] args, string param )
+        {
+            return IndexOfParam( args, param ) > -1;
+        }
+
+        static T GetParameter<T>( string[] args, string param, T defaultValue = default( T ) )
+        {
+            int index = IndexOfParam( args, param );
+
+            if ( index == -1 || index == ( args.Length - 1 ) )
+                return defaultValue;
+
+            string strParam = args[index + 1];
+
+            var converter = TypeDescriptor.GetConverter( typeof( T ) );
+            if ( converter != null )
+            {
+                return (T)converter.ConvertFromString( strParam );
+            }
+
+            return default( T );
         }
     }
 }
