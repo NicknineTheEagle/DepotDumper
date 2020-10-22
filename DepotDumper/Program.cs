@@ -64,12 +64,8 @@ namespace DepotDumper
 
             string filenameUser = ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) ? user : "anon";
 
-            StreamWriter sw = new StreamWriter( string.Format( "{0}_steam.keys", filenameUser ) );
-            sw.AutoFlush = true;
-            StreamWriter sw2 = new StreamWriter( string.Format( "{0}_steam.apps", filenameUser ) );
-            sw2.AutoFlush = true;
-            StreamWriter sw3 = new StreamWriter( string.Format( "{0}_steam.pkgs", filenameUser ) );
-            sw3.AutoFlush = true;
+            StreamWriter sw_pkgs = new StreamWriter( string.Format( "{0}_steam.pkgs", filenameUser ) );
+            sw_pkgs.AutoFlush = true;
 
             IEnumerable<uint> licenseQuery;
             if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
@@ -94,12 +90,21 @@ namespace DepotDumper
                 if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                 {
                     var token = steam3.PackageTokens.ContainsKey( license ) ? steam3.PackageTokens[license] : 0;
-                    sw3.WriteLine( "{0};{1}", license, token );
+                    sw_pkgs.WriteLine( "{0};{1}", license, token );
 
                     List<KeyValue> packageApps = package.KeyValues["appids"].Children;
                     apps.AddRange( packageApps.Select( x => x.AsUnsignedInteger() ).Where( x => !apps.Contains( x ) ) );
                 }
             }
+
+            sw_pkgs.Close();
+
+            StreamWriter sw_apps = new StreamWriter( string.Format( "{0}_steam.apps", filenameUser ) );
+            sw_apps.AutoFlush = true;
+            StreamWriter sw_keys = new StreamWriter( string.Format( "{0}_steam.keys", filenameUser ) );
+            sw_keys.AutoFlush = true;
+            StreamWriter sw_appnames = new StreamWriter( string.Format( "{0}_steam_appnames.txt", filenameUser ) );
+            sw_appnames.AutoFlush = true;
 
             // Fetch AppInfo for all apps.
             steam3.RequestAppInfoList( apps );
@@ -113,44 +118,65 @@ namespace DepotDumper
                 if ( !steam3.AppInfo.TryGetValue( appId, out app ) || app == null )
                     continue;
 
-                KeyValue appinfo = app.KeyValues;
-                KeyValue depotInfo = appinfo["depots"];
+                KeyValue appInfo = app.KeyValues;
+                KeyValue depotInfo = appInfo["depots"];
 
                 if ( !steam3.AppTokens.ContainsKey( appId ) )
                     continue;
 
                 if ( skipUnreleased )
                 {
-                    if ( appinfo["common"]["ReleaseState"] != KeyValue.Invalid )
+                    if ( appInfo["common"]["ReleaseState"] != KeyValue.Invalid )
                     {
-                        if ( appinfo["common"]["ReleaseState"].AsString() != "released" )
+                        if ( appInfo["common"]["ReleaseState"].AsString() != "released" )
                             continue;
                     }
                     else
                     {
-                        if ( appinfo["extended"]["state"].AsString() == "eStateUnavailable" )
+                        if ( appInfo["extended"]["state"].AsString() == "eStateUnavailable" )
                             continue;
                     }
                 }
 
-                sw2.WriteLine( "{0};{1}", appId, steam3.AppTokens[appId] );
+                sw_apps.WriteLine( "{0};{1}", appId, steam3.AppTokens[appId] );
+                sw_appnames.WriteLine( "{0} - {1}", appId, appInfo["common"]["name"].AsString() );
 
                 if ( depotInfo == KeyValue.Invalid )
                     continue;
 
                 foreach ( var depotSection in depotInfo.Children )
                 {
-                    uint id = uint.MaxValue;
+                    uint depotId = uint.MaxValue;
 
-                    if ( !uint.TryParse( depotSection.Name, out id ) || id == uint.MaxValue )
-                        continue;
-
-                    if ( depots.Contains( id ) )
+                    if ( !uint.TryParse( depotSection.Name, out depotId ) || depotId == uint.MaxValue )
                         continue;
 
                     // Skip empty depots.
                     if ( depotSection["manifests"] == KeyValue.Invalid )
-                        continue;
+                    {
+                        if ( depotSection["depotfromapp"] != KeyValue.Invalid )
+                        {
+                            uint otherAppId = depotSection["depotfromapp"].AsUnsignedInteger();
+                            if ( otherAppId == appId )
+                            {
+                                // This shouldn't ever happen, but ya never know with Valve.
+                                Console.WriteLine( "App {0}, Depot {1} has depotfromapp of {2}!",
+                                    appId, depotId, otherAppId );
+                                continue;
+                            }
+
+                            SteamApps.PICSProductInfoCallback.PICSProductInfo otherApp;
+                            if ( !steam3.AppInfo.TryGetValue( otherAppId, out otherApp ) || otherApp == null )
+                                continue;
+
+                            if ( otherApp.KeyValues["depots"][depotId.ToString()]["manifests"] == KeyValue.Invalid )
+                                continue;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
 
                     // Skip depots user doesn't own.
                     bool isOwned = false;
@@ -160,8 +186,8 @@ namespace DepotDumper
                         if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
                         {
                             // Check app list, too, since owning an app with the same ID counts as owning the depot.
-                            if ( package.KeyValues["depotids"].Children.Any( child => child.AsUnsignedInteger() == id ) ||
-                                package.KeyValues["appids"].Children.Any( child => child.AsUnsignedInteger() == id ) )
+                            if ( package.KeyValues["depotids"].Children.Any( child => child.AsUnsignedInteger() == depotId ) ||
+                                package.KeyValues["appids"].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
                             {
                                 isOwned = true;
                                 break;
@@ -172,20 +198,25 @@ namespace DepotDumper
                     if ( !isOwned )
                         continue;
 
-                    steam3.RequestDepotKey( id, appId );
+                    steam3.RequestDepotKey( depotId, appId );
 
                     byte[] depotKey;
-                    if ( steam3.DepotKeys.TryGetValue( id, out depotKey ) )
+                    if ( steam3.DepotKeys.TryGetValue( depotId, out depotKey ) )
                     {
-                        sw.WriteLine( "{0};{1}", id, string.Concat( depotKey.Select( b => b.ToString( "X2" ) ).ToArray() ) );
-                        depots.Add( id );
+                        if ( !depots.Contains( depotId ) )
+                        {
+                            sw_keys.WriteLine( "{0};{1}", depotId, string.Concat( depotKey.Select( b => b.ToString( "X2" ) ).ToArray() ) );
+                            depots.Add( depotId );
+                        }
+
+                        sw_appnames.WriteLine( "\t{0} - {1}", depotId, depotSection["name"].AsString() );
                     }
                 }
             }
 
-            sw.Close();
-            sw2.Close();
-            sw3.Close();
+            sw_apps.Close();
+            sw_keys.Close();
+            sw_appnames.Close();
 
             steam3.TryWaitForLoginKey();
             steam3.Disconnect();
