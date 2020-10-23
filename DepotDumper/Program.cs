@@ -64,7 +64,7 @@ namespace DepotDumper
 
             string filenameUser = ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) ? user : "anon";
 
-            StreamWriter sw_pkgs = new StreamWriter( string.Format( "{0}_steam.pkgs", filenameUser ) );
+            StreamWriter sw_pkgs = new StreamWriter( string.Format( "{0}_pkgs.txt", filenameUser ) );
             sw_pkgs.AutoFlush = true;
 
             IEnumerable<uint> licenseQuery;
@@ -99,11 +99,11 @@ namespace DepotDumper
 
             sw_pkgs.Close();
 
-            StreamWriter sw_apps = new StreamWriter( string.Format( "{0}_steam.apps", filenameUser ) );
+            StreamWriter sw_apps = new StreamWriter( string.Format( "{0}_apps.txt", filenameUser ) );
             sw_apps.AutoFlush = true;
-            StreamWriter sw_keys = new StreamWriter( string.Format( "{0}_steam.keys", filenameUser ) );
+            StreamWriter sw_keys = new StreamWriter( string.Format( "{0}_keys.txt", filenameUser ) );
             sw_keys.AutoFlush = true;
-            StreamWriter sw_appnames = new StreamWriter( string.Format( "{0}_steam_appnames.txt", filenameUser ) );
+            StreamWriter sw_appnames = new StreamWriter( string.Format( "{0}_appnames.txt", filenameUser ) );
             sw_appnames.AutoFlush = true;
 
             // Fetch AppInfo for all apps.
