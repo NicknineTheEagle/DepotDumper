@@ -124,19 +124,10 @@ namespace DepotDumper
                 if ( !steam3.AppTokens.ContainsKey( appId ) )
                     continue;
 
-                if ( skipUnreleased )
-                {
-                    if ( appInfo["common"]["ReleaseState"] != KeyValue.Invalid )
-                    {
-                        if ( appInfo["common"]["ReleaseState"].AsString() != "released" )
-                            continue;
-                    }
-                    else
-                    {
-                        if ( appInfo["extended"]["state"].AsString() == "eStateUnavailable" )
-                            continue;
-                    }
-                }
+                if ( skipUnreleased &&
+                    appInfo["common"]["ReleaseState"] != KeyValue.Invalid &&
+                    appInfo["common"]["ReleaseState"].AsString() != "released" )
+                    continue;
 
                 sw_apps.WriteLine( "{0};{1}", appId, steam3.AppTokens[appId] );
                 sw_appnames.WriteLine( "{0} - {1}", appId, appInfo["common"]["name"].AsString() );
