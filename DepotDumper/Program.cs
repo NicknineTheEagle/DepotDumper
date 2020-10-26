@@ -63,11 +63,6 @@ namespace DepotDumper
                 return 1;
             }
 
-            string filenameUser = ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) ? user : "anon";
-
-            StreamWriter sw_pkgs = new StreamWriter( string.Format( "{0}_pkgs.txt", filenameUser ) );
-            sw_pkgs.AutoFlush = true;
-
             IEnumerable<uint> licenseQuery;
             if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
             {
@@ -84,6 +79,11 @@ namespace DepotDumper
 
             if ( Config.TargetAppId == uint.MaxValue )
             {
+                string filenameUser = ( steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) ? user : "anon";
+
+                StreamWriter sw_pkgs = new StreamWriter( string.Format( "{0}_pkgs.txt", filenameUser ) );
+                sw_pkgs.AutoFlush = true;
+
                 // Collect all apps user owns.
                 var apps = new List<uint>();
 
@@ -156,11 +156,11 @@ namespace DepotDumper
             if ( !steam3.AppInfo.TryGetValue( appId, out app ) || app == null )
                 return false;
 
-            KeyValue appInfo = app.KeyValues;
-            KeyValue depotInfo = appInfo["depots"];
-
             if ( !steam3.AppTokens.ContainsKey( appId ) )
                 return false;
+
+            KeyValue appInfo = app.KeyValues;
+            KeyValue depotInfo = appInfo["depots"];
 
             if ( Config.SkipUnreleased &&
                 appInfo["common"]["ReleaseState"] != KeyValue.Invalid &&
