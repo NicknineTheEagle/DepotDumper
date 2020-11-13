@@ -241,6 +241,14 @@ namespace DepotDumper
                     }
 
                     sw_appnames.WriteLine( "\t{0} - {1}", depotId, depotSection["name"].AsString() );
+
+                    if ( depotSection["manifests"] != KeyValue.Invalid )
+                    {
+                        foreach ( var branch in depotSection["manifests"].Children )
+                        {
+                            sw_appnames.WriteLine( "\t\t{0} - {1}", branch.Name, branch.AsUnsignedLong() );
+                        }
+                    }
                 }
             }
 
