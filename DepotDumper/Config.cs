@@ -8,7 +8,7 @@ namespace DepotDumper
     {
         public static bool RememberPassword = false;
         public static string SuppliedPassword = null;
-        public static bool SkipUnreleased = false;
+        public static bool DumpUnreleased = false;
         public static uint TargetAppId = uint.MaxValue;
     }
 }

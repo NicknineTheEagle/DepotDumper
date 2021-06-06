@@ -43,7 +43,7 @@ namespace DepotDumper
             AccountSettingsStore.LoadFromFile( "xxx" );
 
             Config.TargetAppId = GetParameter<uint>( args, "-app", uint.MaxValue );
-            Config.SkipUnreleased = HasParameter( args, "-skip-unreleased" );
+            Config.DumpUnreleased = HasParameter( args, "-dump-unreleased" );
 
             steam3 = new Steam3Session(
                new SteamUser.LogOnDetails()
@@ -162,7 +162,7 @@ namespace DepotDumper
             KeyValue appInfo = app.KeyValues;
             KeyValue depotInfo = appInfo["depots"];
 
-            if ( Config.SkipUnreleased &&
+            if ( !Config.DumpUnreleased &&
                 appInfo["common"]["ReleaseState"] != KeyValue.Invalid &&
                 appInfo["common"]["ReleaseState"].AsString() != "released" )
                 return false;
