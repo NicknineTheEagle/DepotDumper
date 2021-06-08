@@ -1,7 +1,7 @@
 DepotDownloader
 ===============
 
-Mass depot key dumper utilizing the SteamKit2 library. Supports .NET Core 3.1
+Mass depot key dumper utilizing the SteamKit2 library. Supports .NET 5.0
 
 Resulting files:
 
@@ -19,4 +19,4 @@ Resulting files:
 
 Optional parameters:
 * -app \<#> - dump keys for a specific app.
-* -skip-unreleased - skip apps that don't have "released" status, add this if you are a dev or a tester and don't want to accidentally leak an unreleased game.
+* -dump-unreleased - apps that don't have "released" status are skipped by default to prevent accidental leaks, add this parameter to override this behavior.
